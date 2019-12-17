@@ -97,8 +97,6 @@ ds.samplewise[,c(1,lyta.cols, piab.cols)]
 
 ```
 
-
-
 ## Pneumo positive samples (lytA and piaB+)
 ```{r}
 #as.matrix(ds.samplewise$Sample[ds.samplewise$both.pos==1], ncol=1)
