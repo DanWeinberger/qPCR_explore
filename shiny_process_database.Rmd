@@ -23,22 +23,28 @@ import.fun<-function(ds.name, lognumber){
   return(ds.in)
 }
 ```
+
+```{r}
+#custom function for download button
+downloadButtonRmd <- function (outputId, label = "Download", class = NULL, ...)  {
+     tags$a(id = outputId, class = paste("btn btn-default shiny-download-link", 
+        class), href = "", target = "_blank", download = NA, 
+        icon("download"), label, ...)
+ }
+```
+
+
 ## Specify the names of the files you want to import
 
 ```{r}
-#shinyApp(
 
-#  ui = fluidPage(
  fileInput("excel_input", "Choose .xlsx File",
         accept = c(
           "xlsx",
           ".xls"),
         multiple=TRUE
-        )#,
- #fluidRow(tableOutput('CtTable')),
-  #fluidRow(tableOutput('PneumoPosTable')),
-
- #),
+        )
+  downloadButtonRmd('downloadData',label="Download the data")
 
 ```
 
@@ -91,6 +97,24 @@ return(formatted)
 
   })
 ```
+
+```{r}
+#export table
+datasetOut <- reactive({
+  out.ds<-ds1()$ds
+  out.ds<-out.ds[order(out.ds$Sample),]
+})
+
+output$downloadData <- downloadHandler(
+    filename = function() {
+      paste0('qPCR_results_aggregated_',Sys.Date(), '.csv')
+    },
+    content = function(file) {
+      write.csv(datasetOut(), file, row.names = FALSE)
+    }
+  )
+```
+
 
 ## Pneumo positive samples (lytA+ AND piaB+)
 ```{r}

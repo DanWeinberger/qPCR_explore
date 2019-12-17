@@ -95,7 +95,7 @@ ds.samplewise$both.pos<-ds.samplewise$lytA.pos * ds.samplewise$piaB.pos
 ```
 
 ```{r}
-out.ds<-cbind.data.frame(ds.samplewise[,c(1,lytA.cols, piaB.cols)])
+out.ds<-cbind.data.frame(ds.samplewise)
 out.ds<-out.ds[order(out.ds$Sample),]
 out.ds
 ```
@@ -116,7 +116,7 @@ ds.samplewise[ds.samplewise$lytA.pos==1 & ds.samplewise$piaB.pos==0, c(1,lytA.co
 ## To retest by qPCR (piaB pos and lytA neg)
 
 ```{r}
-ds.samplewise[ds.samplewise$lytA.pos==0 & ds.samplewise$piaB.pos==1,, c(1,lytA.cols, piaB.cols)]
+ds.samplewise[ds.samplewise$lytA.pos==0 & ds.samplewise$piaB.pos==1, c(1,lytA.cols, piaB.cols)]
 
 ```
 
