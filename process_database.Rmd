@@ -1,0 +1,123 @@
+---
+title: "qpcr processing"
+author: "Dan Weinberger"
+date: "12/16/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+#install.packages("readxl")
+library(readxl)
+library(reshape2)
+```
+
+### Specify the names of the files you want to import
+
+```{r}
+file.names.import<- c('a81 flu2.xlsx','a82 flu2.xlsx')
+
+```
+
+```{r}
+## Import the files and combine into a single dataframe
+
+import.fun<-function(ds.name, lognumber){
+  ds.in<-read_excel(paste0("./data/",ds.name), skip=19)
+  ds.in$log.number<- gsub( " .*$", "", ds.name )
+  return(ds.in)
+}
+file.list<-lapply(file.names.import, import.fun)
+
+ds<-do.call('rbind.data.frame',file.list)
+
+```
+
+```{r}
+#Minor cleaning
+
+ds$Sample[ds$Content=='NTC']<-'ntc'
+ds$Cq<-as.numeric(as.character(ds$Cq))
+ds$Cq[is.na(ds$Cq)]<- 45
+ds$Cq[is.nan(ds$Cq)]<- 45
+
+ds<-ds[order(ds$Target, ds$Sample),]
+ds$Cq<-round(ds$Cq)
+```
+
+```{r}
+#count replicates
+#Split the data by target and sample
+ds.spl<-split(ds, paste0(ds$Sample,ds$Target))
+ds.spl<-lapply(ds.spl, function(x){ 
+  x$replicate= 1:nrow(x)
+  return(x)
+})
+ds<-do.call('rbind.data.frame', ds.spl)
+```
+
+
+```{r}
+## Reshape the data so that we have lytA and piaB results adjacent to each other
+
+ds.samples<-ds[!(ds$Sample %in% c('-1','-2','-3','-4','-5','ntc','BL')) ,  ]
+#ds.samples<-ds
+ds2<-ds.samples[c('Target','Sample','Cq','log.number','replicate')]
+ds.m<-melt(ds2, id.vars=c('Target','Sample','log.number','replicate'))
+```
+
+all results on same row, with replicates
+```{r}
+ds.samplewise<-dcast(ds.m, Sample~Target+replicate, fun.aggregate = mean)
+#ds.samplewise
+```
+
+```{r}
+#Which columns have lytA results? piaB results
+lyta.cols<-grep('lyta', names(ds.samplewise))
+piab.cols<-grep('piab', names(ds.samplewise))
+
+pos.neg<-ds.samplewise[,-1, drop=F]
+posneg.lyta.cols<-grep('lyta', names(pos.neg))
+posneg.piab.cols<-grep('piab', names(pos.neg))
+pos.neg[pos.neg<40] <-1
+pos.neg[pos.neg>=40] <-0
+
+ds.samplewise$lyta.pos<-apply(pos.neg[,posneg.lyta.cols,drop=F],1,max)
+ds.samplewise$piab.pos<-apply(pos.neg[,posneg.piab.cols,drop=F],1,max)
+
+ds.samplewise$both.pos<-0
+ds.samplewise$both.pos[ds.samplewise$lyta.pos*ds.samplewise$piab.pos]<-1
+
+```
+
+```{r}
+cbind.data.frame(ds.samplewise[,c(1,lyta.cols, piab.cols)])
+```
+
+
+## Pneumo positive samples (lytA and piaB+)
+```{r}
+as.matrix(ds.samplewise$Sample[ds.samplewise$both.pos==1], ncol=1)
+
+```
+
+## LytA pos, piaB neg to reculture
+```{r}
+as.matrix(ds.samplewise$Sample[ds.samplewise$lyta.pos==1 & ds.samplewise$piab.pos==0], ncol=1)
+
+```
+
+## To retest by qPCR (piaB pos and lytA neg)
+
+```{r}
+as.matrix(ds.samplewise$Sample[ds.samplewise$lyta.pos==0 & ds.samplewise$piab.pos==1], ncol=1)
+
+```
+
+
+
+
+
+
+
