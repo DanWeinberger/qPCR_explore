@@ -82,7 +82,7 @@ pos.neg[pos.neg>=40] <-0
 ```
 
 ```{r}
-ds.samplewise[,c(1,2,lyta.cols, piab.cols)]
+ds.samplewise[,c(which(names(ds.samplewise)=='Sample'),(lyta.cols+1), (piab.cols+1))]
 ```
 
 
