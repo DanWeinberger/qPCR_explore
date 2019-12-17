@@ -75,14 +75,14 @@ lyta.cols<-grep('lyta', names(ds.samplewise))
 piab.cols<-grep('piab', names(ds.samplewise))
 
 pos.neg<-ds.samplewise[,-1, drop=F]
-lyta.cols<-grep('lyta', names(pos.neg))
-piab.cols<-grep('piab', names(pos.neg))
+#lyta.cols<-grep('lyta', names(pos.neg))
+#piab.cols<-grep('piab', names(pos.neg))
 pos.neg[pos.neg<40] <-1
 pos.neg[pos.neg>=40] <-0
 ```
 
 ```{r}
-ds.samplewise[,c(which(names(ds.samplewise)=='Sample'),(lyta.cols+1), (piab.cols+1))]
+ds.samplewise[,c(1,lyta.cols, piab.cols)]
 ```
 
 
