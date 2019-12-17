@@ -14,20 +14,6 @@ library(reshape2)
 library(shiny)
 ```
 
-## Specify the names of the files you want to import
-
-```{r}
- fileInput("excel_input", "Choose .xlsx File",
-        accept = c(
-          "xlsx",
-          ".xls"),
-        multiple=TRUE
-        )
-#file.names.import<- c('a81 flu2.xlsx','a82 flu2.xlsx')
-
-```
-
-
 ```{r}
 ## function to Import the files 
 import.fun<-function(ds.name, lognumber){
@@ -36,17 +22,29 @@ import.fun<-function(ds.name, lognumber){
   return(ds.in)
 }
 ```
-
+## Specify the names of the files you want to import
 
 ```{r}
-renderTable({
+shinyApp(
 
-#Import and combine files
-file.names.import<-input$excel_input$name
-file.list<-lapply(file.names.import, import.fun)
-ds<-do.call('rbind.data.frame',file.list)
+  ui = fluidPage(
+ fileInput("excel_input", "Choose .xlsx File",
+        accept = c(
+          "xlsx",
+          ".xls"),
+        multiple=TRUE
+        ),
+ fluidRow(tableOutput('lineTable'))
+ ),
 
 
+server=function(input,output){
+  output$lineTable<-
+    renderTable({
+ file.names.import<-input$excel_input$name
+  file.list<-lapply(file.names.import, import.fun)
+  ds<-do.call('rbind.data.frame',file.list)
+  
 #Minor cleaning
 ds$Sample[ds$Content=='NTC']<-'ntc'
 ds$Cq<-as.numeric(as.character(ds$Cq))
@@ -86,7 +84,19 @@ pos.neg[pos.neg>=40] <-0
 
 ds.samplewise[,c(1,lyta.cols, piab.cols)]
 })
+
+},
+
+
+  options = list(height = 500)
+)
 ```
+
+
+```{r}
+
+```
+
 
 
 ## Pneumo positive samples (lytA and piaB+)
