@@ -17,7 +17,8 @@ library(shiny)
 ```{r}
 ## function to Import the files 
 import.fun<-function(ds.name, lognumber){
-  ds.in<-read_excel(paste0("./data/",ds.name), skip=19)
+   ds.in<-read_excel(ds.name, skip=19) 
+
   ds.in$log.number<- gsub( " .*$", "", ds.name )
   return(ds.in)
 }
@@ -45,8 +46,8 @@ import.fun<-function(ds.name, lognumber){
 #server=function(input,output){
   ds1<-reactive({
         req(input$excel_input$name)
+      file.names.import<-input$excel_input$datapath
 
-      file.names.import<-input$excel_input$name
       file.list<-lapply(file.names.import, import.fun)
       ds<-do.call('rbind.data.frame',file.list)  
       #Minor cleaning
