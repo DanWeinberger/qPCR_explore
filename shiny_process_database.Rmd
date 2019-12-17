@@ -56,6 +56,8 @@ import.fun<-function(ds.name, lognumber){
         ds$Cq[is.nan(ds$Cq)]<- 45
         ds<-ds[order(ds$Target, ds$Sample),]
         ds$Cq<-round(ds$Cq)
+        names(ds)[names(ds)=='Cq']<-'Ct'
+
         
         #count replicates; Split the data by target and sample
         ds.spl<-split(ds, paste0(ds$Sample,ds$Target))
@@ -68,22 +70,22 @@ import.fun<-function(ds.name, lognumber){
         ## Reshape the data so that we have lytA and piaB results adjacent to each other
         ds.samples<-ds[!(ds$Sample %in% c('-1','-2','-3','-4','-5','ntc','BL')) ,  ]
         #ds.samples<-ds
-        ds2<-ds.samples[c('Target','Sample','Cq','log.number','replicate')]
+        ds2<-ds.samples[c('Target','Sample','Ct','log.number','replicate')]
         ds.m<-melt(ds2, id.vars=c('Target','Sample','log.number','replicate'))
         #all results on same row, with replicates
     ds.samplewise<-dcast(ds.m, Sample~Target+replicate, fun.aggregate = mean)
     pos.neg<-ds.samplewise[,-1, drop=F]
-      lyta.cols<-grep('lyta', names(ds.samplewise))
-piab.cols<-grep('piab', names(ds.samplewise))
-  posneg.lyta.cols<-grep('lyta', names(pos.neg))
-  posneg.piab.cols<-grep('piab', names(pos.neg))
+     lytA.cols<-grep('LYTA',  toupper(names(ds.samplewise)))
+  piaB.cols<-grep('PIAB',  toupper(names(ds.samplewise)))
+  posneg.lytA.cols<-grep('LYTA', toupper(names(pos.neg)))
+  posneg.piaB.cols<-grep('PIAB', toupper(names(pos.neg)))
   pos.neg[pos.neg<40] <-1
   pos.neg[pos.neg>=40] <-0
-  ds.samplewise$lyta.pos<-apply(pos.neg[,posneg.lyta.cols,drop=F],1,max)
-  ds.samplewise$piab.pos<-apply(pos.neg[,posneg.piab.cols,drop=F],1,max)
+  ds.samplewise$lytA.pos<-apply(pos.neg[,posneg.lytA.cols,drop=F],1,max)
+  ds.samplewise$piaB.pos<-apply(pos.neg[,posneg.piaB.cols,drop=F],1,max)
   ds.samplewise$both.pos<-0
-  ds.samplewise$both.pos[ds.samplewise$lyta.pos*ds.samplewise$piab.pos]<-1
-  formatted<-list('ds'=ds.samplewise,'piab.cols'=piab.cols,'lyta.cols'=lyta.cols )
+  ds.samplewise$both.pos<-ds.samplewise$lytA.pos * ds.samplewise$piaB.pos
+  formatted<-list('ds'=ds.samplewise,'piaB.cols'=piaB.cols,'lytA.cols'=lytA.cols )
 return(formatted)
 
   })
@@ -93,7 +95,7 @@ return(formatted)
 ```{r}
  renderTable({
      ds.samplewise<-ds1()$ds
-as.matrix(ds.samplewise$Sample[ds.samplewise$both.pos==1], ncol=1)
+ds.samplewise[ds.samplewise$both.pos==1, c(1, ds1()$lytA.cols, ds1()$piaB.cols)]
 }, bordered=T)
 ```
 
@@ -101,7 +103,7 @@ as.matrix(ds.samplewise$Sample[ds.samplewise$both.pos==1], ncol=1)
 ```{r}
  renderTable({
      ds.samplewise<-ds1()$ds
-as.matrix(ds.samplewise$Sample[ds.samplewise$piab.pos==0 &ds.samplewise$lyta.pos==1 ], ncol=1)
+ds.samplewise[ds.samplewise$piaB.pos==0 &ds.samplewise$lytA.pos==1, c(1, ds1()$lytA.cols, ds1()$piaB.cols) ]
 }, bordered=T)
 ```
 
@@ -109,14 +111,14 @@ as.matrix(ds.samplewise$Sample[ds.samplewise$piab.pos==0 &ds.samplewise$lyta.pos
 ```{r}
  renderTable({
      ds.samplewise<-ds1()$ds
-as.matrix(ds.samplewise$Sample[ds.samplewise$piab.pos==1 &ds.samplewise$lyta.pos==0 ], ncol=1)
+ds.samplewise[ds.samplewise$piaB.pos==1 &ds.samplewise$lytA.pos==0, c(1, ds1()$lytA.cols, ds1()$piaB.cols) ]
 }, bordered=T)
 ```
 
 ## Print all samples
 ```{r}
     renderTable({
-      ds1()$ds[,c(1,ds1()$piab.cols, ds1()$lyta.cols)]
+      ds1()$ds[,c(1,ds1()$lytA.cols, ds1()$piaB.cols)]
     }, bordered=T)
 ```
 
