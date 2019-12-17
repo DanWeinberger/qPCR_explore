@@ -25,100 +25,98 @@ import.fun<-function(ds.name, lognumber){
 ## Specify the names of the files you want to import
 
 ```{r}
-shinyApp(
+#shinyApp(
 
-  ui = fluidPage(
+#  ui = fluidPage(
  fileInput("excel_input", "Choose .xlsx File",
         accept = c(
           "xlsx",
           ".xls"),
         multiple=TRUE
-        ),
- fluidRow(tableOutput('lineTable'))
- ),
+        )#,
+ #fluidRow(tableOutput('CtTable')),
+  #fluidRow(tableOutput('PneumoPosTable')),
 
+ #),
 
-server=function(input,output){
-  output$lineTable<-
-    renderTable({
- file.names.import<-input$excel_input$name
-  file.list<-lapply(file.names.import, import.fun)
-  ds<-do.call('rbind.data.frame',file.list)
-  
-#Minor cleaning
-ds$Sample[ds$Content=='NTC']<-'ntc'
-ds$Cq<-as.numeric(as.character(ds$Cq))
-ds$Cq[is.na(ds$Cq)]<- 45
-ds$Cq[is.nan(ds$Cq)]<- 45
-ds<-ds[order(ds$Target, ds$Sample),]
-ds$Cq<-round(ds$Cq)
+```
 
+```{r}
+#server=function(input,output){
+  ds1<-reactive({
+        req(input$excel_input$name)
 
-#count replicates; Split the data by target and sample
-ds.spl<-split(ds, paste0(ds$Sample,ds$Target))
-ds.spl<-lapply(ds.spl, function(x){ 
-  x$replicate= 1:nrow(x)
-  return(x)
-})
-ds<-do.call('rbind.data.frame', ds.spl)
-
-## Reshape the data so that we have lytA and piaB results adjacent to each other
-ds.samples<-ds[!(ds$Sample %in% c('-1','-2','-3','-4','-5','ntc','BL')) ,  ]
-#ds.samples<-ds
-ds2<-ds.samples[c('Target','Sample','Cq','log.number','replicate')]
-ds.m<-melt(ds2, id.vars=c('Target','Sample','log.number','replicate'))
-
-#all results on same row, with replicates
-ds.samplewise<-dcast(ds.m, Sample~Target+replicate, fun.aggregate = mean)
-ds.samplewise
-
-#Which columns have lytA results? piaB results
-lyta.cols<-grep('lyta', names(ds.samplewise))
+      file.names.import<-input$excel_input$name
+      file.list<-lapply(file.names.import, import.fun)
+      ds<-do.call('rbind.data.frame',file.list)  
+      #Minor cleaning
+        ds$Sample[ds$Content=='NTC']<-'ntc'
+        ds$Cq<-as.numeric(as.character(ds$Cq))
+        ds$Cq[is.na(ds$Cq)]<- 45
+        ds$Cq[is.nan(ds$Cq)]<- 45
+        ds<-ds[order(ds$Target, ds$Sample),]
+        ds$Cq<-round(ds$Cq)
+        
+        #count replicates; Split the data by target and sample
+        ds.spl<-split(ds, paste0(ds$Sample,ds$Target))
+        ds.spl<-lapply(ds.spl, function(x){ 
+          x$replicate= 1:nrow(x)
+          return(x)
+        })
+        ds<-do.call('rbind.data.frame', ds.spl)
+        
+        ## Reshape the data so that we have lytA and piaB results adjacent to each other
+        ds.samples<-ds[!(ds$Sample %in% c('-1','-2','-3','-4','-5','ntc','BL')) ,  ]
+        #ds.samples<-ds
+        ds2<-ds.samples[c('Target','Sample','Cq','log.number','replicate')]
+        ds.m<-melt(ds2, id.vars=c('Target','Sample','log.number','replicate'))
+        #all results on same row, with replicates
+    ds.samplewise<-dcast(ds.m, Sample~Target+replicate, fun.aggregate = mean)
+    pos.neg<-ds.samplewise[,-1, drop=F]
+      lyta.cols<-grep('lyta', names(ds.samplewise))
 piab.cols<-grep('piab', names(ds.samplewise))
+  posneg.lyta.cols<-grep('lyta', names(pos.neg))
+  posneg.piab.cols<-grep('piab', names(pos.neg))
+  pos.neg[pos.neg<40] <-1
+  pos.neg[pos.neg>=40] <-0
+  ds.samplewise$lyta.pos<-apply(pos.neg[,posneg.lyta.cols,drop=F],1,max)
+  ds.samplewise$piab.pos<-apply(pos.neg[,posneg.piab.cols,drop=F],1,max)
+  ds.samplewise$both.pos<-0
+  ds.samplewise$both.pos[ds.samplewise$lyta.pos*ds.samplewise$piab.pos]<-1
+  formatted<-list('ds'=ds.samplewise,'piab.cols'=piab.cols,'lyta.cols'=lyta.cols )
+return(formatted)
 
-pos.neg<-ds.samplewise[,-1, drop=F]
-#lyta.cols<-grep('lyta', names(pos.neg))
-#piab.cols<-grep('piab', names(pos.neg))
-pos.neg[pos.neg<40] <-1
-pos.neg[pos.neg>=40] <-0
-
-ds.samplewise[,c(1,lyta.cols, piab.cols)]
-})
-
-},
-
-
-  options = list(height = 500)
-)
+  })
 ```
 
-
+## Pneumo positive samples (lytA+ AND piaB+)
 ```{r}
-
+ renderTable({
+     ds.samplewise<-ds1()$ds
+as.matrix(ds.samplewise$Sample[ds.samplewise$both.pos==1], ncol=1)
+}, bordered=T)
 ```
 
-## Pneumo positive samples (lytA and piaB+)
+## To reculture and check species (lytA+ and piaB-)
 ```{r}
-#as.matrix(ds.samplewise$Sample[ds.samplewise$both.pos==1], ncol=1)
-
+ renderTable({
+     ds.samplewise<-ds1()$ds
+as.matrix(ds.samplewise$Sample[ds.samplewise$piab.pos==0 &ds.samplewise$lyta.pos==1 ], ncol=1)
+}, bordered=T)
 ```
 
-## LytA pos, piaB neg to reculture
+## To repeat qPCR (lytA- and piaB+)
 ```{r}
-#as.matrix(ds.samplewise$Sample[ds.samplewise$lytApos==1 & ds.samplewise$piaBpos==0], ncol=1)
-
+ renderTable({
+     ds.samplewise<-ds1()$ds
+as.matrix(ds.samplewise$Sample[ds.samplewise$piab.pos==1 &ds.samplewise$lyta.pos==0 ], ncol=1)
+}, bordered=T)
 ```
 
-## To retest by qPCR (piaB pos and lytA neg)
-
+## Print all samples
 ```{r}
-#as.matrix(ds.samplewise$Sample[ds.samplewise$lytApos==0 & ds.samplewise$piaBpos==1], ncol=1)
-
+    renderTable({
+      ds1()$ds[,c(1,ds1()$piab.cols, ds1()$lyta.cols)]
+    }, bordered=T)
 ```
-
-
-
-
-
-
 
