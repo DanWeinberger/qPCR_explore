@@ -17,8 +17,11 @@ library(shiny)
 ```{r}
 ## function to Import the files 
 import.fun<-function(ds.name, lognumber){
+   if(grepl('xls',ds.name)){
    ds.in<-read_excel(ds.name, skip=19) 
-
+   }else if(grepl('csv', ds.name )){
+    ds.in<-read.csv(ds.name, skip=19) 
+   }
   ds.in$log.number<- gsub( " .*$", "", ds.name )
   return(ds.in)
 }
@@ -38,10 +41,10 @@ downloadButtonRmd <- function (outputId, label = "Download", class = NULL, ...) 
 
 ```{r}
 
- fileInput("excel_input", "Choose .xlsx File",
+ fileInput("excel_input", "Choose .xlsx, .xls, or .csv Files",
         accept = c(
           "xlsx",
-          ".xls"),
+          ".xls", '.csv'),
         multiple=TRUE
         )
   downloadButtonRmd('downloadData',label="Download the data")
@@ -88,8 +91,8 @@ downloadButtonRmd <- function (outputId, label = "Download", class = NULL, ...) 
   posneg.piaB.cols<-grep('PIAB', toupper(names(pos.neg)))
   pos.neg[pos.neg<40] <-1
   pos.neg[pos.neg>=40] <-0
-  ds.samplewise$lytA.pos<-apply(pos.neg[,posneg.lytA.cols,drop=F],1,max)
-  ds.samplewise$piaB.pos<-apply(pos.neg[,posneg.piaB.cols,drop=F],1,max)
+  ds.samplewise$lytA.pos<-apply(pos.neg[,posneg.lytA.cols,drop=F],1,max, na.rm=T)
+  ds.samplewise$piaB.pos<-apply(pos.neg[,posneg.piaB.cols,drop=F],1,max, na.rm=T)
   ds.samplewise$both.pos<-0
   ds.samplewise$both.pos<-ds.samplewise$lytA.pos * ds.samplewise$piaB.pos
   formatted<-list('ds'=ds.samplewise,'piaB.cols'=piaB.cols,'lytA.cols'=lytA.cols )
@@ -120,7 +123,16 @@ output$downloadData <- downloadHandler(
 ```{r}
  renderTable({
      ds.samplewise<-ds1()$ds
-ds.samplewise[ds.samplewise$both.pos==1, c(1, ds1()$lytA.cols, ds1()$piaB.cols)]
+mat.print<-ds.samplewise[ds.samplewise$both.pos==1, c(1, ds1()$lytA.cols, ds1()$piaB.cols)]
+mat.print<-mat.print[!is.na(mat.print$Sample),]
+mat.print<-mat.print[!(mat.print$Sample==''),]
+all.miss<-apply(mat.print[,-1],2, function(x1) length(x1)==sum(is.nan(x1) ))
+if (sum(all.miss)>0){
+cbind.data.frame('Sample'=mat.print[,1],mat.print[,-1][,-which(all.miss==1)])
+}else{
+  mat.print
+}
+
 }, bordered=T)
 ```
 
@@ -128,7 +140,15 @@ ds.samplewise[ds.samplewise$both.pos==1, c(1, ds1()$lytA.cols, ds1()$piaB.cols)]
 ```{r}
  renderTable({
      ds.samplewise<-ds1()$ds
-ds.samplewise[ds.samplewise$piaB.pos==0 &ds.samplewise$lytA.pos==1, c(1, ds1()$lytA.cols, ds1()$piaB.cols) ]
+mat.print<-ds.samplewise[ds.samplewise$lytA.pos==1 &ds.samplewise$piaB.pos==0, c(1, ds1()$lytA.cols, ds1()$piaB.cols)]
+mat.print<-mat.print[!is.na(mat.print$Sample),]
+mat.print<-mat.print[!(mat.print$Sample==''),]
+all.miss<-apply(mat.print[,-1],2, function(x1) length(x1)==sum(is.nan(x1) ))
+if (sum(all.miss)>0){
+cbind.data.frame('Sample'=mat.print[,1],mat.print[,-1][,-which(all.miss==1)])
+}else{
+  mat.print
+}
 }, bordered=T)
 ```
 
@@ -136,14 +156,32 @@ ds.samplewise[ds.samplewise$piaB.pos==0 &ds.samplewise$lytA.pos==1, c(1, ds1()$l
 ```{r}
  renderTable({
      ds.samplewise<-ds1()$ds
-ds.samplewise[ds.samplewise$piaB.pos==1 &ds.samplewise$lytA.pos==0, c(1, ds1()$lytA.cols, ds1()$piaB.cols) ]
+mat.print<-ds.samplewise[ds.samplewise$lytA.pos==0 &ds.samplewise$piaB.pos==1, c(1, ds1()$lytA.cols, ds1()$piaB.cols)]
+mat.print<-mat.print[!is.na(mat.print$Sample),]
+mat.print<-mat.print[!(mat.print$Sample==''),]
+all.miss<-apply(mat.print[,-1],2, function(x1) length(x1)==sum(is.nan(x1) ))
+if (sum(all.miss)>0){
+cbind.data.frame('Sample'=mat.print[,1],mat.print[,-1][,-which(all.miss==1)])
+}else{
+  mat.print
+}
 }, bordered=T)
 ```
 
 ## Print all samples
 ```{r}
-    renderTable({
-      ds1()$ds[,c(1,ds1()$lytA.cols, ds1()$piaB.cols)]
-    }, bordered=T)
+ renderTable({
+     ds.samplewise<-ds1()$ds
+mat.print<-ds.samplewise[, c(1, ds1()$lytA.cols, ds1()$piaB.cols)]
+mat.print<-mat.print[!is.na(mat.print$Sample),]
+mat.print<-mat.print[!(mat.print$Sample==''),]
+
+all.miss<-apply(mat.print[,-1],2, function(x1) length(x1)==sum(is.nan(x1) ))
+if (sum(all.miss)>0){
+cbind.data.frame('Sample'=mat.print[,1],mat.print[,-1][,-which(all.miss==1)])
+}else{
+  mat.print
+}
+}, bordered=T)
 ```
 
